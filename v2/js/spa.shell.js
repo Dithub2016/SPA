@@ -43,7 +43,14 @@ spa.shell = (function () {
             <div class="spa-shell-chat"></div>
             <!-- 创建 modal 容器，漂浮在其他内容的上面 -->
             <div class="spa-shell-modal"></div>
-        `
+        `,
+
+        // 根据需求1： “开发人员能够配置滑块运动的速度和高度”，
+        // 在模块配置映射中保存收起和展开的时间和高度
+        chat_extend_time: 1000,
+        chat_retract_time: 300,
+        chat_extend_height: 450,
+        chat_retract_height: 15
     },
     // 将在整个模块中共享的动态信息放在 stateMap 变量中
     stateMap = { $container: null },
@@ -51,7 +58,8 @@ spa.shell = (function () {
     jqueryMap = {},
 
     // 此部分声明所胡模块作用域内的变量。很多都是在之后赋值
-    setJqueryMap, initModule;
+    // 在模块作用域变量列表中，添加 toggleChat 方法
+    setJqueryMap, toggleChat, initModule;
     // --------------- END MODULE SCOPE VARIABLES ----------------
 
     // ---------------- BEGIN UTILITY METHODS --------------------
@@ -62,11 +70,65 @@ spa.shell = (function () {
     // Begin DOM method /setJqueryMap/
     setJqueryMap = function () {
       var $container = stateMap.$container;
-      jqueryMap = { $container: $container };
+
+      // 将聊天滑块的 jQuery 集合缓存 到 jqueryMap 中
+      jqueryMap = {
+        $container: $container,
+        $chat: $container.find('.spa-shell-chat')
+      };
     };
     // 使用 setJqueryMap 来缓存 jQuery 集合。
     // 几乎我们编写的每个 Shell 和功能都应该在这个函数。
     // jqueryMap 缓存的用途是可以大大地减少 jQuery 对文档的遍历次数，能够提高性能。
+    // End DOM method /setJqueryMap/
+    //
+    // Begin DOM method /toggleChat/
+    // Purpose: Extends or retracts chat slider
+    // Arguments:
+    //  * do_extend - if true, extends slider; if false retracts
+    //  * callback - optional function to execute at end of animation
+    // Settings:
+    //  * chat_extend_time, chat_retract_time
+    //  * chat_extend_height, chat_retract_height
+    // Returns: boolean
+    //  * true - slider animation activated
+    //  * false - slider animation not activated
+    //
+     toggleChat = function (do_extend, callback) {
+      var
+        px_chat_ht = jqueryMap.$chat.height(),
+        is_open = px_chat_ht === configMap.chat_extend_height,
+        is_closed = px_chat_ht === configMap.chat_retract_height,
+        is_sliding = !is_open && !is_closed;
+
+      // avoid race condition
+      if (is_sliding) { return falise; }
+
+      // begin extend chat slider
+      if (do_extend) {
+        jqueryMap.$chat.animate(
+          { height: configMap.chat_extend_height },
+          configMap.chat_extend_time,
+          function () {
+            if (callback) { callback(jqueryMap.$chat); }
+          }
+        );
+        return true;
+      }
+      // End extend chat slider
+
+      // Begin retract chat slider
+      jqueryMap.$chat.animate(
+        { height: configMap.chat_retract_height },
+        configMap.chat_retract_time,
+        function () {
+          if (callback) { callback(jqueryMap.$chat); }
+        }
+      );
+      return true;
+      // End retract chat slider
+     };
+     // End DOM method /toggleChat/
     // ---------------- END DOM METHODS ----------------------
 
     // 为 jQuery 事件处理函数你保留的 “Event Handlers” 区块。
@@ -76,11 +138,20 @@ spa.shell = (function () {
     // 将公开方法放在 “Public Methods” 区块中。
     // ---------------- BEGIN PUBLIC METHODS --------------------
     // 创建 initModule 公开方法，用于初始化模块。
+    // Begin Public method /initModule/
     initModule = function ($container) {
+      // load HTML and map jQuery collections
       stateMap.$container = $container;
       $container.html(configMap.main_html);
       setJqueryMap();
+
+      // test toggle
+      // 根据需求5：创建测试代码，以便确认滑块功能正常，
+      // 页面加载完后过3秒，展开滑块，过8秒后收起滑块。
+      setTimeout(function() { toggleChat(true); }, 3000);
+      setTimeout(function() { toggleChat(false); }, 8000);
     };
+    // End PUBLIC method /initModule/
     // ---------------- END PUBLIC METHODS ----------------------
 
     // 显式地导出公开方法，以映射（map）的形式返回。目前可用的只有 initModule。
